@@ -5,11 +5,6 @@
 
 A Python library and script to securely authenticate and download offline blood pressure readings directly from an iHealth Track (KN-550BT) monitor over Bluetooth, bypassing the official app.
 
-## Architecture
-The project is split into two layers:
-1. `kn550bt.py`: The core library. Exposes a clean `KN550BT_Client` that handles all Bluetooth communication, encryption (`XXTEA2`), and raw byte-parsing. It returns clean `BloodPressureRecord` python objects.
-2. `log_to_csv.py`: The consumer application. Imports the core library, retrieves the readings, and appends them to a CSV log file while strictly preventing duplicates.
-
 ## Requirements
 - Python 3.7+
 - macOS/Linux/Windows with Bluetooth LE support
@@ -42,6 +37,13 @@ To view raw hex packet transmissions and debug the protocol:
 ```bash
 python log_to_csv.py --debug
 ```
+
+## Notes
+
+The project is split into two layers:
+1. `kn550bt.py`: The core library. Exposes a clean `KN550BT_Client` that handles all Bluetooth communication, encryption (`XXTEA2`), and raw byte-parsing. It returns clean `BloodPressureRecord` python objects.
+2. `log_to_csv.py`: The consumer application. Imports the core library, retrieves the readings, and appends them to a CSV log file while strictly preventing duplicates.
+
 
 ### Note on Device Memory (Unread Queue)
 By default, this script **does not** delete or mark records as "read" on the physical blood pressure monitor. It uses CSV timestamp deduplication to avoid writing the same reading twice. This allows you to still scroll through your history manually on the device's physical screen.
