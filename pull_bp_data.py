@@ -1,4 +1,5 @@
 import asyncio
+import argparse
 import os
 import random
 import time
@@ -10,6 +11,11 @@ DEVICE_TYPE = 0xA1
 
 KN550BT_STATIC_KEY = bytes([25, 1, 7, -106&0xFF, -14&0xFF, 35, 26, 104, -117&0xFF, 84, 52, 98, -116&0xFF, 87, -21&0xFF, 25])
 CONFIG_FILE = "device_config.txt"
+
+DEBUG = False
+def debug_print(msg):
+    if DEBUG:
+        print(msg)
 
 async def get_or_create_device_uuid():
     """Reads UUID from a file, or forces pairing mode scan if not found."""
@@ -161,7 +167,7 @@ async def pull_bp_records():
     async def send_command(client, cmd_payload):
         async with tx_lock:
             for pkt in package_data_v2(cmd_payload):
-                print(f"  TX: {pkt.hex().upper()}")
+                debug_print(f"  TX: {pkt.hex().upper()}")
                 try:
                     await client.write_gatt_char(WRITE_CHAR, pkt, response=False)
                 except Exception as e:
@@ -172,7 +178,7 @@ async def pull_bp_records():
         global SEQ_ID
         nonlocal offline_buffer, current_user_id
         
-        print(f"📡 RX: {data.hex().upper()}")
+        debug_print(f"📡 RX: {data.hex().upper()}")
         
         if not data or len(data) < 6: return
             
@@ -203,7 +209,7 @@ async def pull_bp_records():
             cmd_id = payload[1]
             
             if cmd_id == 0xFB:
-                print(f"\n🔐 Received 0xFB challenge")
+                debug_print(f"\n🔐 Received 0xFB challenge")
                 # Handle Challenge
                 fb_data = payload[2:]
                 r2_stroke = fb_data[0:16]
@@ -216,7 +222,7 @@ async def pull_bp_records():
                 asyncio.create_task(send_command(client, fc_cmd))
                     
             elif cmd_id == 0xFD:
-                print("\n✅ Authentication SUCCESSFUL!")
+                debug_print("\n✅ Authentication SUCCESSFUL!")
                 # Auth Success
                 auth_done.set()
                 
@@ -290,11 +296,11 @@ async def pull_bp_records():
             await client.start_notify(NOTIFY_CHAR, notification_handler)
             
             # Step 1: Send Identify (0xFA)
-            print("\n── Step 1: Sending Identify (0xFA) ──")
+            debug_print("\n── Step 1: Sending Identify (0xFA) ──")
             fa_cmd = bytes([DEVICE_TYPE, 0xFA]) + r1
             await send_command(client, fa_cmd)
             
-            print("\nWaiting for authentication...")
+            debug_print("\nWaiting for authentication...")
             async def monitor_connection():
                 while not auth_done.is_set():
                     if not client.is_connected:
@@ -335,4 +341,11 @@ async def pull_bp_records():
         print(f"Error: {e}")
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Pull offline blood pressure data from KN-550BT.")
+    parser.add_argument("--debug", action="store_true", help="Enable raw packet debugging output")
+    args = parser.parse_args()
+    
+    if args.debug:
+        DEBUG = True
+        
     asyncio.run(pull_bp_records())
