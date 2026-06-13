@@ -1,2 +1,4 @@
 venv/*
 debug/*
+blood_pressure_log.csv
+__pycache__/*
