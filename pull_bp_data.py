@@ -2,14 +2,39 @@ import asyncio
 import os
 import random
 import time
-from bleak import BleakClient
+from bleak import BleakClient, BleakScanner
 
-DEVICE_UUID = "7DB6E563-D922-93E5-8872-05C7D86C20F0"
 WRITE_CHAR  = "7265632e-6a69-7561-6e2e-646576000000"
 NOTIFY_CHAR = "7365642e-6a69-7561-6e2e-646576000000"
 DEVICE_TYPE = 0xA1
 
 KN550BT_STATIC_KEY = bytes([25, 1, 7, -106&0xFF, -14&0xFF, 35, 26, 104, -117&0xFF, 84, 52, 98, -116&0xFF, 87, -21&0xFF, 25])
+CONFIG_FILE = "device_config.txt"
+
+async def get_or_create_device_uuid():
+    """Reads UUID from a file, or forces pairing mode scan if not found."""
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "r") as f:
+            uuid = f.read().strip()
+            if uuid:
+                print(f"Found saved UUID: {uuid}")
+                return uuid
+
+    print(f"\n[{CONFIG_FILE} not found] -> Scanning for KN-550BT...")
+    print("Press the M/Sync button until the screen is on a past BP measurement!")
+    
+    device = await BleakScanner.find_device_by_filter(
+        lambda d, ad: d.name and ("Track" in d.name or "KN-550" in d.name),
+        timeout=15.0
+    )
+    if not device:
+        raise RuntimeError("Pairing failed: Monitor not found.")
+    
+    with open(CONFIG_FILE, "w") as f:
+        f.write(device.address)
+        
+    print(f"Paired and saved UUID [{device.address}] to {CONFIG_FILE}.\n")
+    return device.address
 
 def _to_uint32(n): return n & 0xFFFFFFFF
 
@@ -254,8 +279,14 @@ async def pull_bp_records():
                 pass
 
     try:
-        async with BleakClient(DEVICE_UUID) as client:
-            print(f"🔌 Connected to [{DEVICE_UUID}]!")
+        device_uuid = await get_or_create_device_uuid()
+    except Exception as e:
+        print(e)
+        return
+
+    try:
+        async with BleakClient(device_uuid) as client:
+            print(f"🔌 Connected to [{device_uuid}]!")
             await client.start_notify(NOTIFY_CHAR, notification_handler)
             
             # Step 1: Send Identify (0xFA)
