@@ -1,4 +1,7 @@
-# iHealth KN-550BT Data Puller
+# iHealth Track KN-550BT Data Puller
+
+## Privacy friendly, completely local BP health downloader
+![screenshot](./screenshot.png)
 
 A Python library and script to securely authenticate and download offline blood pressure readings directly from an iHealth Track (KN-550BT) monitor over Bluetooth, bypassing the official app.
 
